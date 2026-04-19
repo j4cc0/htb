@@ -36,9 +36,9 @@ NIC=""
 HTBRTR="10.10.14.1"
 HTBNIC="tun0"
 VPNSLEEP=10
-KILLSLEEP=2
+KILLSLEEP=5
 PINGSLEEP=1
-PINGCOUNT=10
+PINGAMOUNT=10
 
 HOSTS="/etc/hosts"
 
@@ -82,6 +82,7 @@ while [ $ISCONNECTED -eq 0 ]; do
 	NIC=$(echo "$ROUTE" | awk '{print $2}')
 	if [ "$NIC" = "$HTBNIC" -a "$RTR" = "$HTBRTR" ]; then
 		# Make double sure there's an openvpn running with a filename for connection details
+		echo "[+] Connection looks good. $RTR and $NIC are as expected."
 		RUNNINGVPN="$(basename $(ps ax | grep "openvp[n]" | awk '$5 == "openvpn" { print $NF }' | head -n 1))"
 		if [ "x${RUNNINGVPN}x" = "xx" ]; then
 			# If there's no openvpn running, even with RTR and NIC matching HTBs', then there's something odd going on.
@@ -94,7 +95,9 @@ while [ $ISCONNECTED -eq 0 ]; do
 		if [ "x${RUNNINGVPN}x" = "x${OURVPN}x" ]; then
 			# The openvpn running was started with a similar named vpn file. Assume it's the same.
 			# So, it appears we're connected, a ping to the box **MUST** work, but retry $PINGCOuNT times before restarting.
-			while [ $ISCONNECTED -eq 0 -a $PINGCOUNT -gt 0 ]; do
+			echo "[+] VPN should be good. $IP should respond to pings..."
+			PINGCOUNT="$PINGAMOUNT"
+			while [ $ISCONNECTED -eq 0 -a $PINGCOUNT -gt 1 ]; do
 				ping -q -c 1 -w 3 -W 3 "$IP" &>/dev/null && \
 					ISCONNECTED=1
 				printf "."
@@ -103,7 +106,9 @@ while [ $ISCONNECTED -eq 0 ]; do
 			done
 			# If no ping was answered, restart openvpn.
 			if [ $ISCONNECTED -eq 0 ]; then
-				killall -KILL openvpn
+				echo ""
+				echo "[W] Box did not respond. Restarting openvpn." >&2
+				pkill -KILL openvpn &>/dev/null
 				sleep "$KILLSLEEP"
 				openvpn "$OVPN" &>/dev/null &
 				sleep "$VPNSLEEP"
@@ -111,7 +116,7 @@ while [ $ISCONNECTED -eq 0 ]; do
 		else
 			# The running openvpn does not match the ovpn filename, assuming it's a different HTB-vpn. We need to reconnect.
 			echo "[W] We're on the wrong HTB-vpn, restarting openvpn" >&2
-			killall -KILL openvpn
+			pkill -KILL openvpn &>/dev/null
 			sleep "$KILLSLEEP"
 			# Make the connection, but stay in the loop until the box responds to a ping.
 			openvpn "$OVPN" &>/dev/null &
@@ -120,8 +125,7 @@ while [ $ISCONNECTED -eq 0 ]; do
 	else
 		# The route to HTB appears missing. If not connected, but the interface to the htb-vpn exists, kill openvpn.
 		ip -o a sh dev "$HTBNIC" &>/dev/null && \
-			killall -KILL openvpn
-		sleep "$KILLSLEEP"
+			{ pkill -KILL openvpn &>/dev/null; sleep "$KILLSLEEP"; }
 		# Make the connection to HTB, but stay in the loop until the box responds to a ping.
 		openvpn "$OVPN" &>/dev/null &
 		sleep "$VPNSLEEP"
