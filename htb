@@ -87,7 +87,7 @@ while [ $ISCONNECTED -eq 0 ]; do
 		if [ "x${RUNNINGVPN}x" = "xx" ]; then
 			# If there's no openvpn running, even with RTR and NIC matching HTBs', then there's something odd going on.
 			echo ""
-			echo "[x] Conflicting routes to be able to connect to HTB. Aborted" >&2
+			echo "[x] Conflicting routes. Not able to connect to HTB. Aborted" >&2
 			exit 1
 		fi
 		# Check if the openvpn filename resembles the filename given; We might be on the wrong vpn!
