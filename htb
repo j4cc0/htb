@@ -124,13 +124,13 @@ while [ $ISCONNECTED -eq 0 ]; do
 		fi
 	else
 		# The route to HTB appears missing. If not connected, but the interface to the htb-vpn exists, kill openvpn.
+		echo "[+] No existing route found. Establishing connection..."
 		ip -o a sh dev "$HTBNIC" &>/dev/null && \
 			{ pkill -KILL openvpn &>/dev/null; sleep "$KILLSLEEP"; }
 		# Make the connection to HTB, but stay in the loop until the box responds to a ping.
 		openvpn "$OVPN" &>/dev/null &
 		sleep "$VPNSLEEP"
 	fi
-	printf "."
 done
 echo ""
 echo "[+] Connected!"
@@ -141,7 +141,8 @@ grep -w "$BOXNAME" "$HOSTS" &>/dev/null
 if [ $? -eq 0 ]; then
 	# The box is already in /etc/hosts: Modify the entry to match the current IP-address
 	echo "[+] Modifying $HOSTS to match $BOXNAME to $IP"
-	sed -i "/$BOXNAME/s/^[^[:space:]]*\(.*$BOXNAME.*$\)/$IP\t\1/" "$HOSTS"
+	#sed -i "/$BOXNAME/s/^[^[:space:]]*\(.*$BOXNAME.*$\)/$IP\t\1/" "$HOSTS"
+	sed -i "/$BOXNAME/s/^[^[:space:]]*\($BOXNAME.*\)$/$IP\t\1/" "$HOSTS"
 else
 	# The box is not in /etc/hosts: Add the IP-address and boxname to /etc/hosts
 	echo "[+] Adding $IP and $BOXNAME to $HOSTS"
