@@ -130,6 +130,7 @@ elif [ "x${RUNNINGVPN}x" != "x${OURVPN}x" ]; then
 	reconnect
 fi
 
+echo "[+] Checking connection to $IP"
 while [ $ISCONNECTED -eq 0 ]; do
 	PINGCOUNT="$PINGAMOUNT"
 	while [ $ISCONNECTED -eq 0 -a $PINGCOUNT -gt 1 ]; do
