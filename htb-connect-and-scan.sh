@@ -121,7 +121,7 @@ fi
 
 OURVPN=$(basename "$OVPN")
 RUNNINGVPN=$(basename "$(ps ax | grep 'openvp[n]' | awk '$5 == "openvpn" { print $NF }' | head -n 1)" 2>/dev/null)
-echo "--- $OURVPN === $RUNNINGVPN"
+#echo "--- $OURVPN === $RUNNINGVPN"
 if [ "x${RUNNINGVPN}x" = "xx" ]; then
 	# Not connected. Connect first
 	connect
