@@ -161,7 +161,7 @@ if [ $? -eq 0 ]; then
 else
 	# The box is not in /etc/hosts: Add the IP-address and boxname to /etc/hosts
 	echo "[+] Adding $IP and $BOXNAME to $HOSTS"
-	printf "%s\t%s" "$IP" "$BOXNAME" >> /etc/hosts
+	printf "%s\t%s\n\n" "$IP" "$BOXNAME" >> /etc/hosts
 fi
 
 # Create directory and start nmap
