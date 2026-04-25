@@ -11,6 +11,7 @@
 # 1. To connect to HTB: OpenVPN-file
 # 2. Box name: String.htb
 # 3. IP-address of the box: 10.129.x.y
+# 4. OPTIONAL: Number. Restart the vpn after this amount of pings sent.
 
 # This script will try to:
 # 1. connect to HTB, if not already connected, reconnect if required.
@@ -27,6 +28,7 @@ MYHTBDIR="/htb"
 OVPN="${1:-$HOME/openvpn/hackthebox.ovpn}"
 BOXNAME="${2}"
 IP="${3}"
+PINGAMOUNT="${4:-10}"
 
 ISCONNECTED=0
 ROUTE=""
@@ -38,8 +40,8 @@ HTBNIC="tun0"
 VPNSLEEP=1
 KILLSLEEP=5
 PINGSLEEP=1
-PINGAMOUNT=10
-OPID=0
+RESTARTAMOUNT=10
+OURPID=0
 
 HOSTS="/etc/hosts"
 
@@ -57,13 +59,13 @@ connect() {
 	ROUTE=""
 	NIC=""
 	RTR=""
-	RESTARTAFTER="$PINGAMOUNT"
-	OPID=0
+	RESTARTAFTER="$RESTARTAMOUNT"
+	OURPID=0
 	while [ "$NIC" != "$HTBNIC" -a "$RTR" != "$HTBRTR" ]
 	do
-		if [ $OPID -eq 0 ]; then
+		if [ "$OURPID" -eq 0 ]; then
 			openvpn "$OVPN" &>/dev/null &
-			OPID="$!"
+			OURPID="$!"
 		fi
 		sleep "$VPNSLEEP"
 		ROUTE=$(ip route get "$IP" | awk '{print $3 " " $5}' | grep '^[0-9]' | head -n 1)
@@ -74,7 +76,7 @@ connect() {
 			echo ""
 			echo "[W] Failed to get a route to $HTBRTR" >&2
 			disconnect
-			RESTARTAFTER="$PINGAMOUNT"
+			RESTARTAFTER="$RESTARTAMOUNT"
 		fi
 		printf "."
 	done
@@ -85,8 +87,20 @@ connect() {
 
 disconnect() {
 	echo "[+] Shutting down openvpn ..."
-	pkill -KILL openvpn &>/dev/null
-	OPID=0
+	if [ "$OURPID" -ne 0 ]; then
+		kill -KILL "$OURPID" &>/dev/null
+	else
+		OURVPN=$(basename "$OVPN")
+		RUNNINGVPN=$(basename "$(ps ax | grep 'openvp[n]' | awk '$5 == "openvpn" { print $NF }' | head -n 1)" 2>/dev/null)
+		RUNNINGVPNPID=$(ps ax | grep 'openvp[n]' | awk '$5 == "openvpn" { print $1 }' | head -n 1)
+		if [ "x${RUNNINGVPN}x" = "x${OURVPN}x" ]; then
+			kill -KILL "$RUNNINGVPNPID"
+		else
+			echo "[W] Couldn't find our openvpn instance. Killing all instances now..." >&2
+			pkill -KILL openvpn &>/dev/null
+		fi
+	fi
+	OURPID=0
 	sleep "$KILLSLEEP"
 }
 
@@ -105,7 +119,7 @@ fi
 
 # -- Sanity checking
 
-if [ $# -ne 3 ]; then
+if [ $# -lt 3 ]; then
 	echo "[x] Missing a parameter. Use -h or --help for help. Aborted" >&2
 	exit 1
 fi
@@ -121,7 +135,6 @@ fi
 
 OURVPN=$(basename "$OVPN")
 RUNNINGVPN=$(basename "$(ps ax | grep 'openvp[n]' | awk '$5 == "openvpn" { print $NF }' | head -n 1)" 2>/dev/null)
-#echo "--- $OURVPN === $RUNNINGVPN"
 if [ "x${RUNNINGVPN}x" = "xx" ]; then
 	# Not connected. Connect first
 	connect
@@ -131,9 +144,9 @@ elif [ "x${RUNNINGVPN}x" != "x${OURVPN}x" ]; then
 fi
 
 echo "[+] Checking connection to $IP"
-while [ $ISCONNECTED -eq 0 ]; do
+while [ "$ISCONNECTED" -eq 0 ]; do
 	PINGCOUNT="$PINGAMOUNT"
-	while [ $ISCONNECTED -eq 0 -a $PINGCOUNT -gt 1 ]; do
+	while [ "$ISCONNECTED" -eq 0 -a "$PINGCOUNT" -gt 1 ]; do
 		ping -q -c 1 -w 3 -W 3 "$IP" &>/dev/null && \
 			ISCONNECTED=1
 		printf "."
@@ -141,7 +154,7 @@ while [ $ISCONNECTED -eq 0 ]; do
 		sleep "$PINGSLEEP"
 	done
 	# If no ping was answered, restart openvpn.
-	if [ $ISCONNECTED -eq 0 ]; then
+	if [ "$ISCONNECTED" -eq 0 ]; then
 		echo ""
 		echo "[W] Box did not respond. Restarting openvpn." >&2
 		reconnect
@@ -154,11 +167,12 @@ echo "[+] Connected!"
 # Add or modify host entry in /etc/hosts
 
 grep -w "$BOXNAME" "$HOSTS" &>/dev/null
-if [ $? -eq 0 ]; then
+if [ "$?" -eq 0 ]; then
 	# The box is already in /etc/hosts: Modify the entry to match the current IP-address
 	echo "[+] Modifying $HOSTS to match $BOXNAME to $IP"
-	#sed -i "/$BOXNAME/s/^[^[:space:]]*\(.*$BOXNAME.*$\)/$IP\t\1/" "$HOSTS"
-	sed -i "/$BOXNAME/s/^[^[:space:]]*\($BOXNAME.*\)$/$IP\t\1/" "$HOSTS"
+	grep "$BOXNAME" /etc/hosts # --- DEBUG ---
+	sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]\($BOXNAME.*\)$/$IP\t\1\n/" "$HOSTS"
+	grep "$BOXNAME" /etc/hosts # --- DEBUG ---
 else
 	# The box is not in /etc/hosts: Add the IP-address and boxname to /etc/hosts
 	echo "[+] Adding $IP and $BOXNAME to $HOSTS"
