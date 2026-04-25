@@ -30,19 +30,20 @@ BOXNAME="${2}"
 IP="${3}"
 PINGAMOUNT="${4:-10}"
 
-ISCONNECTED=0
-ROUTE=""
-RTR=""
-NIC=""
-
 HTBRTR="10.10.14.1"
 HTBNIC="tun0"
 VPNSLEEP=1
 KILLSLEEP=5
 PINGSLEEP=1
 RESTARTAMOUNT=10
-OURPID=0
 
+# -- No editing beyond this point
+
+ISCONNECTED=0
+ROUTE=""
+RTR=""
+NIC=""
+OURPID=0
 HOSTS="/etc/hosts"
 
 # -- Functions
@@ -170,9 +171,9 @@ grep -w "$BOXNAME" "$HOSTS" &>/dev/null
 if [ "$?" -eq 0 ]; then
 	# The box is already in /etc/hosts: Modify the entry to match the current IP-address
 	echo "[+] Modifying $HOSTS to match $BOXNAME to $IP"
-	grep "$BOXNAME" /etc/hosts # --- DEBUG ---
+	#grep "$BOXNAME" /etc/hosts # --- DEBUG ---
 	sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]\($BOXNAME.*\)$/$IP\t\1\n/" "$HOSTS"
-	grep "$BOXNAME" /etc/hosts # --- DEBUG ---
+	#grep "$BOXNAME" /etc/hosts # --- DEBUG ---
 else
 	# The box is not in /etc/hosts: Add the IP-address and boxname to /etc/hosts
 	echo "[+] Adding $IP and $BOXNAME to $HOSTS"
