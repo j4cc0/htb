@@ -33,7 +33,7 @@ PINGAMOUNT="${4:-10}"
 HTBRTR="10.10.14.1"
 HTBNIC="tun0"
 VPNSLEEP=1
-KILLSLEEP=5
+KILLSLEEP=2
 PINGSLEEP=1
 RESTARTAMOUNT=10
 
@@ -43,8 +43,16 @@ ISCONNECTED=0
 ROUTE=""
 RTR=""
 NIC=""
+OURVPN=""
 OURPID=0
 HOSTS="/etc/hosts"
+
+# Colors
+
+RED="\e[31m"
+GREEN="\e[32m"
+YELLOW="\e[33m"
+EOC="\e[0m"
 
 # -- Functions
 
@@ -55,8 +63,23 @@ usage() {
 	return 0
 }
 
+die() {
+	echo -e "[${RED}x${EOC}] $@. Aborted" >&2
+	exit 1
+}
+
+warn() {
+	echo -e "[${YELLOW}!${EOC}] $@" >&2
+	return 0
+}
+
+note() {
+	echo -e "[${GREEN}+${EOC}] $@"
+	return 0
+}
+
 connect() {
-	echo "[+] Connecting to HTB using $OVPN ..."
+	note "Connecting to HTB using $OVPN ..."
 	ROUTE=""
 	NIC=""
 	RTR=""
@@ -75,29 +98,28 @@ connect() {
 		RESTARTAFTER=$((RESTARTAFTER - 1))
 		if [ "$RESTARTAFTER" -le 0 ]; then
 			echo ""
-			echo "[W] Failed to get a route to $HTBRTR" >&2
+			warn "Failed to get a route to $HTBRTR"
 			disconnect
 			RESTARTAFTER="$RESTARTAMOUNT"
 		fi
 		printf "."
 	done
 	echo ""
-	echo "[+] Route to $HTBRTR established."
+	note "Route to $HTBRTR established."
 	return 0
 }
 
 disconnect() {
-	echo "[+] Shutting down openvpn ..."
+	note "Shutting down openvpn ..."
 	if [ "$OURPID" -ne 0 ]; then
 		kill -KILL "$OURPID" &>/dev/null
 	else
-		OURVPN=$(basename "$OVPN")
 		RUNNINGVPN=$(basename "$(ps ax | grep 'openvp[n]' | awk '$5 == "openvpn" { print $NF }' | head -n 1)" 2>/dev/null)
 		RUNNINGVPNPID=$(ps ax | grep 'openvp[n]' | awk '$5 == "openvpn" { print $1 }' | head -n 1)
 		if [ "x${RUNNINGVPN}x" = "x${OURVPN}x" ]; then
 			kill -KILL "$RUNNINGVPNPID"
 		else
-			echo "[W] Couldn't find our openvpn instance. Killing all instances now..." >&2
+			warn "Couldn't find our openvpn instance. Killing all instances now..."
 			pkill -KILL openvpn &>/dev/null
 		fi
 	fi
@@ -121,13 +143,11 @@ fi
 # -- Sanity checking
 
 if [ $# -lt 3 ]; then
-	echo "[x] Missing a parameter. Use -h or --help for help. Aborted" >&2
-	exit 1
+	die "Missing a parameter. Use -h or --help for help"
 fi
 
 if [ ! -r "$OVPN" ]; then
-	echo "[x] $OVPN is not readable. Does it exist? Aborted" >&2
-	exit 1
+	die "$OVPN is not readable. Does it exist"
 fi
 
 # -- Main
@@ -144,7 +164,7 @@ elif [ "x${RUNNINGVPN}x" != "x${OURVPN}x" ]; then
 	reconnect
 fi
 
-echo "[+] Checking connection to $IP"
+note "Checking connection to $IP"
 while [ "$ISCONNECTED" -eq 0 ]; do
 	PINGCOUNT="$PINGAMOUNT"
 	while [ "$ISCONNECTED" -eq 0 -a "$PINGCOUNT" -gt 1 ]; do
@@ -157,27 +177,27 @@ while [ "$ISCONNECTED" -eq 0 ]; do
 	# If no ping was answered, restart openvpn.
 	if [ "$ISCONNECTED" -eq 0 ]; then
 		echo ""
-		echo "[W] Box did not respond. Restarting openvpn." >&2
+		warn "Box did not respond. Restarting openvpn."
 		reconnect
 		ISCONNECTED=0
 	fi
 done
 echo ""
-echo "[+] Connected!"
+note "Connected!"
 
 # Add or modify host entry in /etc/hosts
 
 grep -w "$BOXNAME" "$HOSTS" &>/dev/null
 if [ "$?" -eq 0 ]; then
 	# The box is already in /etc/hosts: Modify the entry to match the current IP-address
-	echo "[+] Modifying $HOSTS to match $BOXNAME to $IP"
+	note "Modifying $HOSTS to match $BOXNAME to $IP"
 	#grep "$BOXNAME" /etc/hosts # --- DEBUG ---
 	sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]\($BOXNAME.*\)$/$IP\t\1\n/" "$HOSTS"
 	#grep "$BOXNAME" /etc/hosts # --- DEBUG ---
 else
 	# The box is not in /etc/hosts: Add the IP-address and boxname to /etc/hosts
-	echo "[+] Adding $IP and $BOXNAME to $HOSTS"
-	printf "%s\t%s\n\n" "$IP" "$BOXNAME" >> /etc/hosts
+	note "Adding $IP and $BOXNAME to $HOSTS"
+	printf "%s\t%s\n" "$IP" "$BOXNAME" >> /etc/hosts
 fi
 
 # Create directory and start nmap
@@ -186,7 +206,7 @@ HTBDIR="$MYHTBDIR/$BOXNAME"
 mkdir -p "$HTBDIR" &>/dev/null
 
 touch "$HTBDIR/$IP" || \
-	{ echo "[x] Failed to write in $HTBDIR. Aborted" >&2; exit 1; }
+	die "Failed to write in $HTBDIR"
 
 nmap -A -p- -n -vv -oA "$HTBDIR/full" "$IP"
 
