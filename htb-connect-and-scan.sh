@@ -208,8 +208,21 @@ mkdir -p "$HTBDIR" &>/dev/null
 touch "$HTBDIR/$IP" || \
 	die "Failed to write in $HTBDIR"
 
-nmap -A -p- -n -vv -oA "$HTBDIR/full" "$IP"
+NMAPFILE="$HTBDIR/full.nmap"
+if [ ! -s "$NMAPFILE" ]; then
+	# Nmap file does not exist or is 0 bytes.
+	nmap -A -p- -n -vv -oA "$HTBDIR/full" "$IP"
+fi
 
+# Correct /etc/hosts if the name of the box didn't match from the nmap scan, but keep the (incorrect) BOXNAME in there, so this script can be re-run and things will remain consistent.
+# Filter out unique names related to BOXNAME
+THESEHOSTS=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | sort -ru | xargs echo)
+
+# Merthod 1:
+NEWNAMES="$(grep -i 'DNS:' "$HTBDIR/full.nmap" | sed 's/,/\n/g;s/DNS:/\n/g' | grep -v : | grep htb | sort -ru | xargs echo)"
+
+ALLNAMES="$(echo $NEWNAMES $THESEHOSTS | sed 's/ /\n/g' | sort -ru | xargs echo)"
+sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
 
 
 
