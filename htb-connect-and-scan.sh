@@ -150,6 +150,14 @@ if [ ! -r "$OVPN" ]; then
 	die "$OVPN is not readable. Does it exist"
 fi
 
+# Make double sure there's a boxname ending in .htb and a plainname (without that).
+#
+PLAINNAME=$(echo $BOXNAME | tr '[A-Z]' '[a-z]' | sed 's/\.htb$//')
+ENDSINHTB=$(echo $BOXNAME | tr '[A-Z]' '[a-z]' | grep '\.htb$')
+if [ "x${ENDSINHTB}x" = "xx" ]; then
+	BOXNAME="${BOXNAME}.htb"
+fi
+
 # -- Main
 
 # Connect to HTB
@@ -202,7 +210,7 @@ fi
 
 # Create directory and start nmap
 
-HTBDIR="$MYHTBDIR/$BOXNAME"
+HTBDIR="$MYHTBDIR/$PLAINNAME"
 mkdir -p "$HTBDIR" &>/dev/null
 
 touch "$HTBDIR/$IP" || \
@@ -215,22 +223,45 @@ if [ ! -s "$NMAPFILE" ]; then
 fi
 
 # Correct /etc/hosts if the name of the box didn't match from the nmap scan, but keep the (incorrect) BOXNAME in there, so this script can be re-run and things will remain consistent.
+
 # Filter out unique names related to BOXNAME
 THESEHOSTS=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | sort -ru | xargs echo)
 
-# Merthod 1:
-NEWNAMES1=$(grep -i 'DNS:' "$NMAPFILE" | sed 's/,/\n/g;s/DNS:/\n/g' | grep -v : | grep htb | sort -ru | xargs echo)
+# Method 1:
+NEWNAMES1=$(grep -i 'DNS:' "$NMAPFILE" | sed 's/,/\n/g;s/\*\.//g;s/DNS:/\n/g' | grep -v : | grep htb | sort -ru | xargs echo)
+if [ "x${NEWNAMES1}x" != "xx" ]; then
+	note "Found the following names in a certificate alternative names section: $NEWNAMES1"
+	HASWILDCARD=$(grep -i 'DNS:' "$NMAPFILE" | sed 's/,/\n/g;s/DNS:/\n/g' | grep -v : | grep htb | sort -ru | grep '\*')
+	if [ "x${HASWILDCARD}x" != "xx" ]; then
+		warn "${RED}A wildcard was found in the server certificate, this is a written invitation to do some vhost-scanning${EOC}"
+	fi
+fi
 
-# Merthod 2:
+# Method 2:
 NEWNAMES2=$(grep Domain: "$NMAPFILE" | sed 's/^.*Domain: \(.*\), .*$/\1/' | sort -ru | xargs echo)
+if [ "x${NEWNAMES2}x" != "xx" ]; then
+	note "Found the following names in Active Directory LDAP: $NEWNAMES2"
+fi
 
-# Merthod 3:	# CHECK FOR WILDCARDS!!! XXX --- TODO --- XXX
+# Method 3:
 NEWNAMES3=$(grep -i 'Subject: commonName=' "$NMAPFILE" | sed 's/^.*commonName=\(.*\)$/\1/' | sort -ru | xargs echo)
+if [ "x${NEWNAMES3}x" != "xx" ]; then
+	note "Found the following names in a certificate subject: $NEWNAMES3"
+fi
 
-# Merthod 4:
+# Method 4:
 NEWNAMES4=$(grep 'follow redirect' "$NMAPFILE" | sed 's@^.*://\(.*.htb\).*$@\1@' | sort -ru | xargs echo)
+if [ "x${NEWNAMES4}x" != "xx" ]; then
+	note "Found the following name in a http redirect: $NEWNAMES4"
+fi
 
-ALLNAMES="$(echo $NEWNAMES1 $NEWNAMES2 $NEWNAMES3 $NEWNAMES4 $THESEHOSTS | sed 's/ /\n/g' | sort -ru | xargs echo)"
+# Method 5:
+NEWNAMES5=$(grep "DNS_Computer_Name:" "$NMAPFILE" | awk '{print $NF}')
+if [ "x${NEWNAMES5}x" != "xx" ]; then
+	note "Found the following name in rdp-ntlm-info: $NEWNAMES5"
+fi
+
+ALLNAMES=$(echo "$NEWNAMES1 $NEWNAMES2 $NEWNAMES3 $NEWNAMES4 $NEWNAMES5 $THESEHOSTS" | sed 's/ /\n/g' | sort -ru | xargs echo)
 sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
 
 
