@@ -219,9 +219,18 @@ fi
 THESEHOSTS=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | sort -ru | xargs echo)
 
 # Merthod 1:
-NEWNAMES="$(grep -i 'DNS:' "$HTBDIR/full.nmap" | sed 's/,/\n/g;s/DNS:/\n/g' | grep -v : | grep htb | sort -ru | xargs echo)"
+NEWNAMES1=$(grep -i 'DNS:' "$NMAPFILE" | sed 's/,/\n/g;s/DNS:/\n/g' | grep -v : | grep htb | sort -ru | xargs echo)
 
-ALLNAMES="$(echo $NEWNAMES $THESEHOSTS | sed 's/ /\n/g' | sort -ru | xargs echo)"
+# Merthod 2:
+NEWNAMES2=$(grep Domain: "$NMAPFILE" | sed 's/^.*Domain: \(.*\), .*$/\1/' | sort -ru | xargs echo)
+
+# Merthod 3:	# CHECK FOR WILDCARDS!!! XXX --- TODO --- XXX
+NEWNAMES3=$(grep -i 'Subject: commonName=' "$NMAPFILE" | sed 's/^.*commonName=\(.*\)$/\1/' | sort -ru | xargs echo)
+
+# Merthod 4:
+NEWNAMES4=$(grep 'follow redirect' "$NMAPFILE" | sed 's@^.*://\(.*.htb\).*$@\1@' | sort -ru | xargs echo)
+
+ALLNAMES="$(echo $NEWNAMES1 $NEWNAMES2 $NEWNAMES3 $NEWNAMES4 $THESEHOSTS | sed 's/ /\n/g' | sort -ru | xargs echo)"
 sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
 
 
