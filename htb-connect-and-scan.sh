@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Script: htb
+# Script: htb-connect-and-scan.sh
 # Author: Jacco van Buuren
 # License: BSD 3-clause.
 
@@ -64,17 +64,48 @@ usage() {
 }
 
 die() {
-	echo -e "[${RED}x${EOC}] $@. Aborted" >&2
+	#echo -e "[${RED}x${EOC}] $@. Aborted" >&2
+	note DIE "$@. Aborted"
 	exit 1
 }
 
 warn() {
-	echo -e "[${YELLOW}!${EOC}] $@" >&2
+	#echo -e "[${YELLOW}!${EOC}] $@" >&2
+	note WARN "$@"
 	return 0
 }
 
 note() {
-	echo -e "[${GREEN}+${EOC}] $@"
+	case "$1" in
+		"IMPORTANT")
+			shift
+			MARK="[${GREEN}+${EOC}]"
+			MSG="${RED}$@${EOC}"
+			ERR="NO"
+			;;
+		"WARN")
+			shift
+			MARK="[${YELLOW}+${EOC}]"
+			MSG="$@"
+			ERR="YES"
+			;;
+		"DIE")
+			shift
+			MARK="[${RED}x${EOC}]"
+			MSG="$@"
+			ERR="YES"
+			;;
+		*)
+			MARK="[${GREEN}+${EOC}]"
+			MSG="$@"
+			ERR="NO"
+			;;
+	esac
+	if [ "$ERR" = "YES" ]; then
+		echo -e "$MARK $MSG" >&2
+	elif [ "$ERR" = "NO" ]; then
+		echo -e "$MARK $MSG"
+	fi
 	return 0
 }
 
@@ -119,7 +150,13 @@ disconnect() {
 		if [ "x${RUNNINGVPN}x" = "x${OURVPN}x" ]; then
 			kill -KILL "$RUNNINGVPNPID"
 		else
-			warn "Couldn't find our openvpn instance. Killing all instances now..."
+			tty -s &>/dev/null
+			if [ "$?" -eq 0 ]; then
+				warn IMPORTANT "Couldn't find our openvpn instance. Killing all instances OR HIT CTRL-C RIGHT NOW"
+				read -t 3
+			else
+				warn IMPORTANT "Couldn't find our openvpn instance. Killing all instances"
+			fi
 			pkill -KILL openvpn &>/dev/null
 		fi
 	fi
@@ -151,12 +188,9 @@ if [ ! -r "$OVPN" ]; then
 fi
 
 # Make double sure there's a boxname ending in .htb and a plainname (without that).
-#
-PLAINNAME=$(echo $BOXNAME | tr '[A-Z]' '[a-z]' | sed 's/\.htb$//')
-ENDSINHTB=$(echo $BOXNAME | tr '[A-Z]' '[a-z]' | grep '\.htb$')
-if [ "x${ENDSINHTB}x" = "xx" ]; then
-	BOXNAME="${BOXNAME}.htb"
-fi
+
+PLAINNAME=$(echo "$BOXNAME" | tr '[A-Z]' '[a-z]' | sed 's/\.htb.*$//')
+BOXNAME="${PLAINNAME}.htb"
 
 # -- Main
 
@@ -263,6 +297,8 @@ fi
 
 ALLNAMES=$(echo "$NEWNAMES1 $NEWNAMES2 $NEWNAMES3 $NEWNAMES4 $NEWNAMES5 $THESEHOSTS" | sed 's/ /\n/g' | sort -ru | xargs echo)
 sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
+note "$IP is now listed as: $ALLNAMES"
+
 
 
 
