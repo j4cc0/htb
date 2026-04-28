@@ -110,7 +110,14 @@ note() {
 }
 
 connect() {
-	note "Connecting to HTB using $OVPN ..."
+	basename "$OVPN" 2>/dev/null | sed 's/^\([a-z_]*\)_\([a-z]*-[0-9a-z\-]*\)\.ovpn/\1 \2/g' | tr '[a-z]' '[A-Z]' | while read name vpn
+	do
+		if [ "x${name}x" != "xx" -a "x${vpn}x" != "xx" ]; then
+			note "Connecting to: ${YELLOW}$name${EOC} on ${YELLOW}$vpn${EOC}"
+		else
+			note "Connecting to HTB using $OVPN"
+		fi
+	done
 	ROUTE=""
 	NIC=""
 	RTR=""
@@ -297,7 +304,7 @@ fi
 
 ALLNAMES=$(echo "$NEWNAMES1 $NEWNAMES2 $NEWNAMES3 $NEWNAMES4 $NEWNAMES5 $THESEHOSTS" | sed 's/ /\n/g' | sort -ru | xargs echo)
 sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
-note "$IP is now listed as: $ALLNAMES"
+note "${YELLOW}$IP${EOC} is now listed as: ${YELLOW}$ALLNAMES${EOC}"
 
 
 
