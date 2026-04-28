@@ -75,6 +75,11 @@ warn() {
 	return 0
 }
 
+important() {
+	note IMPORTANT "$@"
+	return 0
+}
+
 note() {
 	case "$1" in
 		"IMPORTANT")
@@ -159,10 +164,10 @@ disconnect() {
 		else
 			tty -s &>/dev/null
 			if [ "$?" -eq 0 ]; then
-				warn IMPORTANT "Couldn't find our openvpn instance. Killing all instances OR HIT CTRL-C RIGHT NOW"
+				warn "Couldn't find our openvpn instance. Killing all instances OR HIT CTRL-C RIGHT NOW"
 				read -t 3
 			else
-				warn IMPORTANT "Couldn't find our openvpn instance. Killing all instances"
+				warn "Couldn't find our openvpn instance. Killing all instances"
 			fi
 			pkill -KILL openvpn &>/dev/null
 		fi
@@ -274,7 +279,7 @@ if [ "x${NEWNAMES1}x" != "xx" ]; then
 	note "Found the following names in a certificate alternative names section: $NEWNAMES1"
 	HASWILDCARD=$(grep -i 'DNS:' "$NMAPFILE" | sed 's/,/\n/g;s/DNS:/\n/g' | grep -v : | grep htb | sort -ru | grep '\*')
 	if [ "x${HASWILDCARD}x" != "xx" ]; then
-		warn "${RED}A wildcard was found in the server certificate, this is a written invitation to do some vhost-scanning${EOC}"
+		important "A wildcard was found in the server certificate, this is a written invitation to do some vhost-scanning"
 	fi
 fi
 
@@ -305,7 +310,5 @@ fi
 ALLNAMES=$(echo "$NEWNAMES1 $NEWNAMES2 $NEWNAMES3 $NEWNAMES4 $NEWNAMES5 $THESEHOSTS" | sed 's/ /\n/g' | sort -ru | xargs echo)
 sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
 note "${YELLOW}$IP${EOC} is now listed as: ${YELLOW}$ALLNAMES${EOC}"
-
-
 
 
