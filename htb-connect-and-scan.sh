@@ -179,11 +179,8 @@ start_openvpn() {
 		*)
 			;;
 	esac
-	# This works because of --user, otherwise openvpn is owned by root, and we'd end up killing only $XTERM, not openvpn.
 	"$XTERM" $XFCE4OPTS -T "--=<[ HTB: $VPNTYPE $VPNLOC ]>=--" --zoom "$ZOOM" --color-text grey --color-bg black --geometry=148x30+"${W}"+"${H}" -e "openvpn --user \"${USER}\" --config \"$OVPN\"" &>/dev/null &
 	OURPID="$!"
-	#sleep "$VPNSLEEP"
-	#note "----> $OURPID"
 	return 0
 }
 
