@@ -53,8 +53,9 @@ OURVPN=""
 export OURPID=0
 HOSTS="/etc/hosts"
 XTERM="xfce4-terminal"
-VPNTYPE="Unkown"
-VPNLOC="Unknown"
+UNKNOWN="Unknown"
+VPNTYPE="$UNKNOWN"
+VPNLOC="$UNKNOWN"
 
 # Colors
 
@@ -142,6 +143,7 @@ important() {
 
 start_openvpn() {
 	if [ "$OURPID" -ne 0 ]; then
+		# Already running. No need to start again
 		return 1
 	fi
 	if [ "x${DISPLAY}x" = "xx" -o "x$(which $XTERM 2>/dev/null)x" = "xx" ]; then
@@ -179,7 +181,7 @@ start_openvpn() {
 		*)
 			;;
 	esac
-	"$XTERM" $XFCE4OPTS -T "--=<[ HTB: $VPNTYPE $VPNLOC ]>=--" --zoom "$ZOOM" --color-text grey --color-bg black --geometry=148x30+"${W}"+"${H}" -e "openvpn --user \"${USER}\" --config \"$OVPN\"" &>/dev/null &
+	"$XTERM" $XFCE4OPTS -T "---=<[ HTB ]>=--=<[ $VPNTYPE ]>=--=<[ $VPNLOC ]>=---" --zoom "$ZOOM" --color-text grey --color-bg black --geometry=148x30+"${W}"+"${H}" -e "openvpn --user \"${USER}\" --config \"$OVPN\"" &>/dev/null &
 	OURPID="$!"
 	return 0
 }
@@ -189,7 +191,7 @@ connect() {
 	if [ "x${VPNTYPE}x" != "xx" -a "x${VPNLOC}x" != "xx" ]; then
 		note "Connecting to HTB VPN: ${YELLOW}${VPNTYPE}${EOC} ${YELLOW}${VPNLOC}${EOC}"
 	else
-		note "Connecting to HTB using $OVPN"
+		note "Connecting to HTB using $OURVPN"
 	fi
 	ROUTE=""
 	NIC=""
@@ -279,6 +281,10 @@ if [ "x${RUNNINGVPN}x" = "xx" ]; then
 elif [ "x${RUNNINGVPN}x" != "x${OURVPN}x" ]; then
 	# Connected but to the wrong vpn. Reconnect
 	reconnect
+fi
+
+if [ "$VPNTYPE" = "$UNKNOWN" -o "$VPNLOC" = "$UNKNOWN" ]; then
+	note "Reusing a prior established connection to HTB"
 fi
 
 note "Checking connection to $IP"
