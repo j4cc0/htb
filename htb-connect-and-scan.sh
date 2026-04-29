@@ -37,6 +37,12 @@ KILLSLEEP=2
 PINGSLEEP=1
 RESTARTAMOUNT=10
 
+# When running X11
+ZOOM="-2"	# Valid are: 0, -1, -2, -3, -4
+TEXT="grey"
+BACK="black"
+XFCE4OPTS="--hide-menubar --hide-toolbar --hide-scrollbar"
+
 # -- No editing beyond this point
 
 ISCONNECTED=0
@@ -44,8 +50,11 @@ ROUTE=""
 RTR=""
 NIC=""
 OURVPN=""
-OURPID=0
+export OURPID=0
 HOSTS="/etc/hosts"
+XTERM="xfce4-terminal"
+VPNTYPE="Unkown"
+VPNLOC="Unknown"
 
 # Colors
 
@@ -60,23 +69,6 @@ usage() {
 	cat <<-___EOF___
 	Sorry. Not yet implemented.
 	___EOF___
-	return 0
-}
-
-die() {
-	#echo -e "[${RED}x${EOC}] $@. Aborted" >&2
-	note DIE "$@. Aborted"
-	exit 1
-}
-
-warn() {
-	#echo -e "[${YELLOW}!${EOC}] $@" >&2
-	note WARN "$@"
-	return 0
-}
-
-important() {
-	note IMPORTANT "$@"
 	return 0
 }
 
@@ -114,10 +106,72 @@ note() {
 	return 0
 }
 
+die() {
+	note DIE "$@. Aborted"
+	exit 1
+}
+
+warn() {
+	note WARN "$@"
+	return 0
+}
+
+important() {
+	note IMPORTANT "$@"
+	return 0
+}
+
+start_openvpn() {
+	if [ "$OURPID" -ne 0 ]; then
+		return 1
+	fi
+	if [ "x${DISPLAY}x" = "xx" -o "x$(which $XTERM 2>/dev/null)x" = "xx" ]; then
+		note "DISPLAY ($DISPLAY) was not set or terminal ($XTERM) was not found. Running openvpn in background"
+		openvpn "$OVPN" &>/dev/null &
+		OURPID="$!"
+		return 0
+	fi
+	note "Running openvpn in $XTERM..."
+	# Get the screen resolution and calculate width and height for 5 settings.
+	read -r X Y <<<$(xrandr 2>&1 | grep "Screen $(echo $DISPLAY | sed 's/\..*$//' | rev)" | sed 's/^.*current \([0-9]*\) x \([0-9]*\),.*$/\1 \2/')
+	W=$((X-1120))
+	H=$((Y-480))
+	case $ZOOM in
+		0)
+			W=$((X-1120))
+			H=$((Y-480))
+			;;
+		-1)
+			W=$((X-1010))
+			H=$((Y-440))
+			;;
+		-2)
+			W=$((X-900))
+			H=$((Y-400))
+			;;
+		-3)
+			W=$((X-750))
+			H=$((Y-360))
+			;;
+		-4)
+			W=$((X-400))
+			H=$((Y-280))
+			;;
+		*)
+			;;
+	esac
+	# This works because of --user, otherwise openvpn is owned by root, and we'd end up killing only $XTERM, not openvpn.
+	"$XTERM" $XFCE4OPTS -T "--=<[ HTB: $VPNTYPE $VPNLOC ]>=--" --zoom "$ZOOM" --color-text grey --color-bg black --geometry=148x30+"${W}"+"${H}" -H -e "openvpn --user \"${USER}\" --config \"$OVPN\"" &>/dev/null &
+	OURPID="$!"
+	#sleep "$VPNSLEEP"
+	#note "----> $OURPID"
+	return 0
+}
+
 connect() {
-	read -r name vpn <<<$(basename "$OVPN" 2>/dev/null | sed 's/^\([a-z_]*\)_\([a-z]*-[0-9a-z\-]*\)\.ovpn/\1 \2/g' | tr '[a-z]' '[A-Z]')
-	if [ "x${name}x" != "xx" -a "x${vpn}x" != "xx" ]; then
-		note "Connecting to HTB VPN: ${YELLOW}$name${EOC} ${YELLOW}$vpn${EOC}"
+	read -r VPNTYPE VPNLOC <<<$(basename "$OVPN" 2>/dev/null | sed 's/^\([a-z_]*\)_\([a-z]*-[0-9a-z\-]*\)\.ovpn/\1 \2/g' | tr '[a-z]' '[A-Z]')
+	if [ "x${VPNTYPE}x" != "xx" -a "x${VPNLOC}x" != "xx" ]; then
+		note "Connecting to HTB VPN: ${YELLOW}${VPNTYPE}${EOC} ${YELLOW}${VPNLOC}${EOC}"
 	else
 		note "Connecting to HTB using $OVPN"
 	fi
@@ -126,12 +180,9 @@ connect() {
 	RTR=""
 	RESTARTAFTER="$RESTARTAMOUNT"
 	OURPID=0
+	start_openvpn
 	while [ "$NIC" != "$HTBNIC" -a "$RTR" != "$HTBRTR" ]
 	do
-		if [ "$OURPID" -eq 0 ]; then
-			openvpn "$OVPN" &>/dev/null &
-			OURPID="$!"
-		fi
 		sleep "$VPNSLEEP"
 		ROUTE=$(ip route get "$IP" | awk '{print $3 " " $5}' | grep '^[0-9]' | head -n 1)
 		RTR=$(echo "$ROUTE" | awk '{print $1}')
@@ -142,6 +193,7 @@ connect() {
 			warn "Failed to get a route to $HTBRTR"
 			disconnect
 			RESTARTAFTER="$RESTARTAMOUNT"
+			start_openvpn
 		fi
 		printf "."
 	done
