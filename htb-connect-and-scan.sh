@@ -72,6 +72,25 @@ usage() {
 	return 0
 }
 
+list_descendants() {
+	if [ "$#" -ne 1 ]; then
+		warn "Internal error. Parameter expected"
+		return 1
+	fi
+	expr $1 + 1 &>/dev/null
+	if [ "$?" -ne 0 ]; then
+		warn "Internal error. Parameter not numeric"
+		return 1
+	fi
+	local children=$(ps -o pid= --ppid "$1")
+	for pid in $children
+	do
+		list_descendants "$pid"
+	done
+	echo "$children"
+	return 0
+}
+
 note() {
 	case "$1" in
 		"IMPORTANT")
@@ -161,7 +180,7 @@ start_openvpn() {
 			;;
 	esac
 	# This works because of --user, otherwise openvpn is owned by root, and we'd end up killing only $XTERM, not openvpn.
-	"$XTERM" $XFCE4OPTS -T "--=<[ HTB: $VPNTYPE $VPNLOC ]>=--" --zoom "$ZOOM" --color-text grey --color-bg black --geometry=148x30+"${W}"+"${H}" -H -e "openvpn --user \"${USER}\" --config \"$OVPN\"" &>/dev/null &
+	"$XTERM" $XFCE4OPTS -T "--=<[ HTB: $VPNTYPE $VPNLOC ]>=--" --zoom "$ZOOM" --color-text grey --color-bg black --geometry=148x30+"${W}"+"${H}" -e "openvpn --user \"${USER}\" --config \"$OVPN\"" &>/dev/null &
 	OURPID="$!"
 	#sleep "$VPNSLEEP"
 	#note "----> $OURPID"
@@ -205,26 +224,19 @@ connect() {
 disconnect() {
 	note "Shutting down openvpn ..."
 	if [ "$OURPID" -ne 0 ]; then
-		kill -KILL "$OURPID" &>/dev/null 
+		kill -KILL $(list_descendants "$OURPID") &>/dev/null 
 		wait "$OURPID" &>/dev/null
 	else
-		RUNNINGVPN=$(basename "$(ps ax | grep 'openvp[n]' | awk '$5 == "openvpn" { print $NF }' | head -n 1)" 2>/dev/null)
-		RUNNINGVPNPID=$(ps ax | grep 'openvp[n]' | awk '$5 == "openvpn" { print $1 }' | head -n 1)
-		if [ "x${RUNNINGVPN}x" = "x${OURVPN}x" ]; then
-			kill -KILL "$RUNNINGVPNPID" &>/dev/null
-			wait "$RUNNINGVPNPID" &>/dev/null
+		tty -s &>/dev/null
+		if [ "$?" -eq 0 ]; then
+			warn "Couldn't find our openvpn instance."
+			important "Killing all instances OR HIT CTRL-C RIGHT NOW"
+			read -t 3
 		else
-			tty -s &>/dev/null
-			if [ "$?" -eq 0 ]; then
-				warn "Couldn't find our openvpn instance."
-				important "Killing all instances OR HIT CTRL-C RIGHT NOW"
-				read -t 3
-			else
-				warn "Couldn't find our openvpn instance. Killing all instances"
-			fi
-			pkill -KILL openvpn &>/dev/null
-			wait &>/dev/null
+			warn "Couldn't find our openvpn instance. Killing all instances"
 		fi
+		pkill -KILL openvpn &>/dev/null
+		wait &>/dev/null
 	fi
 	OURPID=0
 	sleep "$KILLSLEEP"
