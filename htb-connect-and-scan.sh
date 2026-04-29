@@ -49,9 +49,9 @@ HOSTS="/etc/hosts"
 
 # Colors
 
-RED="\e[31m"
-GREEN="\e[32m"
-YELLOW="\e[33m"
+RED="\e[1;31m"
+GREEN="\e[1;32m"
+YELLOW="\e[1;33m"
 EOC="\e[0m"
 
 # -- Functions
@@ -118,7 +118,7 @@ connect() {
 	basename "$OVPN" 2>/dev/null | sed 's/^\([a-z_]*\)_\([a-z]*-[0-9a-z\-]*\)\.ovpn/\1 \2/g' | tr '[a-z]' '[A-Z]' | while read name vpn
 	do
 		if [ "x${name}x" != "xx" -a "x${vpn}x" != "xx" ]; then
-			note "Connecting to: ${YELLOW}$name${EOC} on ${YELLOW}$vpn${EOC}"
+			note "Connecting to HTB VPN: ${YELLOW}$name${EOC} ${YELLOW}$vpn${EOC}"
 		else
 			note "Connecting to HTB using $OVPN"
 		fi
@@ -155,21 +155,25 @@ connect() {
 disconnect() {
 	note "Shutting down openvpn ..."
 	if [ "$OURPID" -ne 0 ]; then
-		kill -KILL "$OURPID" &>/dev/null
+		kill -KILL "$OURPID" &>/dev/null 
+		wait "$OURPID" &>/dev/null
 	else
 		RUNNINGVPN=$(basename "$(ps ax | grep 'openvp[n]' | awk '$5 == "openvpn" { print $NF }' | head -n 1)" 2>/dev/null)
 		RUNNINGVPNPID=$(ps ax | grep 'openvp[n]' | awk '$5 == "openvpn" { print $1 }' | head -n 1)
 		if [ "x${RUNNINGVPN}x" = "x${OURVPN}x" ]; then
-			kill -KILL "$RUNNINGVPNPID"
+			kill -KILL "$RUNNINGVPNPID" &>/dev/null
+			wait "$RUNNINGVPNPID" &>/dev/null
 		else
 			tty -s &>/dev/null
 			if [ "$?" -eq 0 ]; then
-				warn "Couldn't find our openvpn instance. Killing all instances OR HIT CTRL-C RIGHT NOW"
+				warn "Couldn't find our openvpn instance."
+				important "Killing all instances OR HIT CTRL-C RIGHT NOW"
 				read -t 3
 			else
 				warn "Couldn't find our openvpn instance. Killing all instances"
 			fi
 			pkill -KILL openvpn &>/dev/null
+			wait &>/dev/null
 		fi
 	fi
 	OURPID=0
@@ -280,6 +284,8 @@ if [ "x${NEWNAMES1}x" != "xx" ]; then
 	HASWILDCARD=$(grep -i 'DNS:' "$NMAPFILE" | sed 's/,/\n/g;s/DNS:/\n/g' | grep -v : | grep htb | sort -ru | grep '\*')
 	if [ "x${HASWILDCARD}x" != "xx" ]; then
 		important "A wildcard was found in the server certificate, this is a written invitation to do some vhost-scanning"
+		# Perhaps try something like:
+		#     gobuster vhost -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt --domain kobold.htb -u https://10.129.41.223 -k --ad 
 	fi
 fi
 
