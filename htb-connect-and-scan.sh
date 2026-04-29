@@ -347,7 +347,7 @@ if [ "x${NEWNAMES1}x" != "xx" ]; then
 	if [ "x${HASWILDCARD}x" != "xx" ]; then
 		important "A wildcard was found in the server certificate, this is a written invitation to do some vhost-scanning"
 		# Perhaps try something like:
-		#     gobuster vhost -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt --domain kobold.htb -u https://10.129.41.223 -k --ad 
+		#     gobuster vhost -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt --domain "${BOXNAME}" -u https://"${IP}" -k --ad 
 	fi
 fi
 
