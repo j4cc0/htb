@@ -115,14 +115,12 @@ note() {
 }
 
 connect() {
-	basename "$OVPN" 2>/dev/null | sed 's/^\([a-z_]*\)_\([a-z]*-[0-9a-z\-]*\)\.ovpn/\1 \2/g' | tr '[a-z]' '[A-Z]' | while read name vpn
-	do
-		if [ "x${name}x" != "xx" -a "x${vpn}x" != "xx" ]; then
-			note "Connecting to HTB VPN: ${YELLOW}$name${EOC} ${YELLOW}$vpn${EOC}"
-		else
-			note "Connecting to HTB using $OVPN"
-		fi
-	done
+	read -r name vpn <<<$(basename "$OVPN" 2>/dev/null | sed 's/^\([a-z_]*\)_\([a-z]*-[0-9a-z\-]*\)\.ovpn/\1 \2/g' | tr '[a-z]' '[A-Z]')
+	if [ "x${name}x" != "xx" -a "x${vpn}x" != "xx" ]; then
+		note "Connecting to HTB VPN: ${YELLOW}$name${EOC} ${YELLOW}$vpn${EOC}"
+	else
+		note "Connecting to HTB using $OVPN"
+	fi
 	ROUTE=""
 	NIC=""
 	RTR=""
