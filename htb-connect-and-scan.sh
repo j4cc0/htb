@@ -39,7 +39,7 @@ RESTARTAMOUNT=10
 
 # When running X11
 ZOOM="-2"	# Valid are: 0, -1, -2, -3, -4
-TEXT="grey"
+TEXT="green"
 BACK="black"
 XFCE4OPTS="--hide-menubar --hide-toolbar --hide-scrollbar"
 
@@ -181,7 +181,7 @@ start_openvpn() {
 		*)
 			;;
 	esac
-	"$XTERM" $XFCE4OPTS -T "---=<[ HTB ]>=--=<[ $VPNTYPE ]>=--=<[ $VPNLOC ]>=---" --zoom "$ZOOM" --color-text grey --color-bg black --geometry=148x30+"${W}"+"${H}" -e "openvpn --user \"${USER}\" --config \"$OVPN\"" &>/dev/null &
+	"$XTERM" $XFCE4OPTS -T "---=<[ HTB ]>=--=<[ $VPNTYPE ]>=--=<[ $VPNLOC ]>=---" --zoom "$ZOOM" --color-text "$TEXT" --color-bg "$BACK" --geometry=148x30+"${W}"+"${H}" -e "openvpn --user \"${USER}\" --config \"$OVPN\"" &>/dev/null &
 	OURPID="$!"
 	return 0
 }
@@ -285,6 +285,8 @@ fi
 
 if [ "$VPNTYPE" = "$UNKNOWN" -o "$VPNLOC" = "$UNKNOWN" ]; then
 	note "Reusing a prior established connection to HTB"
+else
+	note "Connected to HTB VPN: ${VPNTYPE} ${VPNLOC}"
 fi
 
 note "Checking connection to $IP"
