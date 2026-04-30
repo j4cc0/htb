@@ -325,9 +325,7 @@ grep -w "$BOXNAME" "$HOSTS" &>/dev/null
 if [ "$?" -eq 0 ]; then
 	# The box is already in /etc/hosts: Modify the entry to match the current IP-address
 	note "Modifying $HOSTS to match $BOXNAME to $IP"
-	#grep "$BOXNAME" /etc/hosts # --- DEBUG ---
 	sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]\($BOXNAME.*\)$/$IP\t\1\n/" "$HOSTS"
-	#grep "$BOXNAME" /etc/hosts # --- DEBUG ---
 else
 	# The box is not in /etc/hosts: Add the IP-address and boxname to /etc/hosts
 	note "Adding $IP and $BOXNAME to $HOSTS"
