@@ -38,6 +38,7 @@ This script will try to:
    Notice the absence of .htb in the box-name, and how it is listed in /etc/hosts as a result.   
    In the example below, an existing connection to HTB was detected.   
      
+~~~sh
   $ sudo ./htb-connect-and-scan.sh ~/Downloads/machines_eu-3.ovpn pingpong 10.129.37.253 3   
   [+] Reusing a prior established connection to HTB   
   [+] Checking connection to 10.129.37.253   
@@ -47,12 +48,14 @@ This script will try to:
   [+] Found the following names in a certificate alternative names section: ping.htb dc1.ping.htb   
   [+] Found the following names in Active Directory LDAP: ping.htb   
   [+] 10.129.37.253 is now listed as: pingpong.htb ping.htb dc1.ping.htb   
+~~~
      
 2. Connect to HTB VPN machines EU 3 and scan a box INCORRECTLY spelled as kobolt instead of kobold.   
    Not that that ever happens in real life... Of course not.   
    In the example below, no prior connection was found and $XTERM and $DISPLAY were available and used to run openvpn in.   
    Notice the wildcard detection feature and the box name CORRECTLY spelled as kobold.htb.   
      
+~~~sh
   $ sudo ~/htb/htb-connect-and-scan.sh ~/openvpn/machines_eu-3.ovpn kobolt 10.129.43.160   
   [+] Connecting to HTB VPN: MACHINES EU-3   
   [+] Running openvpn in xfce4-terminal...   
@@ -72,4 +75,5 @@ This script will try to:
   [+] Found the following names in a certificate subject: kobold.htb   
   [+] Found the following name in a http redirect: kobold.htb   
   [+] 10.129.43.160 is now listed as: kobolt.htb kobold.htb   
+~~~
      
