@@ -212,7 +212,8 @@ start_openvpn() {
 	fi
 	note "Running openvpn in $XTERM..."
 	# Get the screen resolution and calculate width and height for 5 settings.
-	read -r X Y <<<$(xrandr 2>&1 | grep "Screen $(echo $DISPLAY | sed 's/\..*$//' | rev)" | sed 's/^.*current \([0-9]*\) x \([0-9]*\),.*$/\1 \2/')
+	#read -r X Y <<<$(xrandr 2>&1 | grep "Screen $(echo $DISPLAY | sed 's/\..*$//' | rev)" | sed 's/^.*current \([0-9]*\) x \([0-9]*\),.*$/\1 \2/')
+	read -r X Y <<<$(xrandr 2>&1 | grep "^Screen [0-9]: .* current .*$" | sed 's/^.*current \([0-9]*\) x \([0-9]*\),.*$/\1 \2/')
 	W=$((X-1120))
 	H=$((Y-480))
 	case $ZOOM in
@@ -239,7 +240,12 @@ start_openvpn() {
 		*)
 			;;
 	esac
-	"$XTERM" $XFCE4OPTS -T "---=<[ HTB ]>=--=<[ $VPNTYPE ]>=--=<[ $VPNLOC ]>=---" --zoom "$ZOOM" --color-text "$TEXT" --color-bg "$BACK" --geometry=148x30+"${W}"+"${H}" -e "openvpn --user \"${USER}\" --config \"$OVPN\"" &>/dev/null &
+	note "Detected screen resolution as: $X x $Y, using $W and $H for zoom $ZOOM"
+	TITLE="---=<[ HTB ]>=--=<[ $VPNTYPE ]>=--=<[ $VPNLOC ]>=---"
+	# --- DEBUG
+	#echo "$XTERM $XFCE4OPTS -T \"$TITLE\" --zoom \"$ZOOM\" --color-text \"$TEXT\" --color-bg \"$BACK\" --geometry=148x30+${W}+${H} -e openvpn --user \"${USER}\" --config \"$OVPN\""
+	# --- DEBUG
+	$XTERM $XFCE4OPTS -T "$TITLE" --zoom "$ZOOM" --color-text "$TEXT" --color-bg "$BACK" --geometry="148x30+${W}+${H}" -e "openvpn --user \"${USER}\" --config \"$OVPN\"" &>/dev/null &
 	OURPID="$!"
 	return 0
 }
