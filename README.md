@@ -1,8 +1,8 @@
 # htb-connect-and-scan.sh
 
-Script: htb-connect-and-scan.sh
-Author: sx02089
-License: BSD 3-clause.
+Script: htb-connect-and-scan.sh   
+Author: sx02089   
+License: BSD 3-clause.   
   
 ## Description
   

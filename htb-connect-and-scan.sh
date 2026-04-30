@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #=@ Script: htb-connect-and-scan.sh
-#=@ Author: Jacco van Buuren
+#=@ Author: sx02089
 #=@ License: BSD 3-clause.
 #=@   
 #=@ Description
