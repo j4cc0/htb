@@ -1,25 +1,28 @@
 #!/usr/bin/env bash
-# Script: htb-connect-and-scan.sh
-# Author: Jacco van Buuren
-# License: BSD 3-clause.
-
-# Description: HackTheBox connect script.
-#   This scripts connect to HTB with openvpn and will setup a directory named after the box.
-#   Nmap is run as soon as the connection is established.
-
-# Parameters:
-# 1. To connect to HTB: OpenVPN-file
-# 2. Box name: String.htb
-# 3. IP-address of the box: 10.129.x.y
-# 4. OPTIONAL: Number. Restart the vpn after this amount of pings sent.
-
-# This script will try to:
-# 1. connect to HTB, if not already connected, reconnect if required.
-# 2. When the connection is up, ping box IP-addr or reconnect until it does.
-# 3. If the box has an entry in /etc/hosts: Replace IP-addr with current, if not add IP-addr and name to /etc/hosts
-# 4. mkdir /htb/<name-of-box> if not already there
-# 5. run nmap -A -v -n -vv -p- -Pn --open /htb/<name>/full.nmap IP-addr
-# 6. run whatever
+#=@ Script: htb-connect-and-scan.sh
+#=@ Author: Jacco van Buuren
+#=@ License: BSD 3-clause.
+#=@   
+#=@ Description
+#=@   
+#=@ HackTheBox connect and scan script.
+#=@ This script connects to HTB with openvpn and will setup a directory named after the box.
+#=@ Nmap is run as soon as the connection is established. Based on nmap's output /etc/hosts is modified.
+#=@   
+#=@ Parameters
+#=@   
+#=@ 1. REQUIRED: To connect to HTB: OpenVPN-file
+#=@ 2. REQUIRED: Box name: name-of-box[.htb]
+#=@ 3. REQUIRED: IP-address of the box: 10.129.x.y
+#=@ 4. OPTIONAL: Number. Restart the vpn after this amount of pings sent.
+#=@   
+#=@ This script will try to:
+#=@ 1. connect to HTB, if not already connected, reconnect if required.
+#=@ 2. When the connection is up, ping box IP-addr or reconnect until it does.
+#=@ 3. If the box has an entry in /etc/hosts: Replace the IP address with the current one, if not add it to /etc/hosts.
+#=@ 4. mkdir $MYHTBDIR/<name-of-box> if not already there.
+#=@ 5. run nmap -A -v -n -vv -p- -Pn --open $MYHTBDIR/<name>/full.nmap <IP address>
+#=@ 6. Analyse nmap's output for hostnames and add these to the IP address in /etc/hosts.
 
 # -- Globals, constants
 
@@ -56,8 +59,13 @@ XTERM="xfce4-terminal"
 UNKNOWN="Unknown"
 VPNTYPE="$UNKNOWN"
 VPNLOC="$UNKNOWN"
+#
+# Usage from marked comments
 
-# Colors
+DOXMARK='#.@ '
+SCRIPT="$0"
+
+# Terminal colors
 
 RED="\e[1;31m"
 GREEN="\e[1;32m"
@@ -67,9 +75,10 @@ EOC="\e[0m"
 # -- Functions
 
 usage() {
-	cat <<-___EOF___
-	Sorry. Not yet implemented.
-	___EOF___
+	grep "$DOXMARK" "$SCRIPT" | sed -e "s/$DOXMARK//" -e 's/$/\n/' | grep -v '^DOXMARK=' | grep -v '^$'
+	#cat <<-___EOF___
+	#Sorry. Not yet implemented.
+	#___EOF___
 	return 0
 }
 
