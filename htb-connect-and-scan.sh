@@ -390,7 +390,11 @@ fi
 # Create directory and start nmap
 
 HTBDIR="$MYHTBDIR/$PLAINNAME"
-mkdir -p "$HTBDIR" &>/dev/null
+if [ ! -d "$HTBDIR" ]; then
+	mkdir -p "$HTBDIR" &>/dev/null
+	chmod 1777 "$HTBDIR" &>/dev/null || \
+		die "Failed to change permissions on $HTBDIR"
+fi
 
 touch "$HTBDIR/$IP" || \
 	die "Failed to write in $HTBDIR"
