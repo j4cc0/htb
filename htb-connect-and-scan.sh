@@ -204,6 +204,13 @@ start_openvpn() {
 		# Already running. No need to start again
 		return 1
 	fi
+	# Check name resolving if the "remote " peer in the OVPN file.
+	REMOTEPEER=$(grep '^remote ' "$OVPN" | awk '{print $2}')
+	host -W 1 "$REMOTEPEER" &>/dev/null
+	if [ "$?" -ne 0 ]; then
+		warn "$REMOTEPEER from $OVPN does not resolve. Expect connectivity issues"
+	fi
+	# Check if there's an X11-alike $DISPLAY available.
 	if [ "x${DISPLAY}x" = "xx" -o "x$(which $XTERM 2>/dev/null)x" = "xx" ]; then
 		note "DISPLAY ($DISPLAY) was not set or terminal ($XTERM) was not found. Running openvpn in background"
 		openvpn "$OVPN" &>/dev/null &
@@ -331,6 +338,10 @@ fi
 # Make double sure there's a boxname ending in .htb and a plainname (without that).
 
 PLAINNAME=$(echo "$BOXNAME" | tr '[A-Z]' '[a-z]' | sed 's/\.htb.*$//')
+if [ "x${PLAINNAME}x" = "xx" ]; then
+	die "Invalid boxname"
+fi
+
 BOXNAME="${PLAINNAME}.htb"
 
 # -- Main
