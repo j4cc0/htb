@@ -77,11 +77,6 @@
 
 MYHTBDIR="/htb"
 
-OVPN="${1:-$HOME/openvpn/hackthebox.ovpn}"
-BOXNAME="${2}"
-IP="${3}"
-PINGAMOUNT="${4:-10}"
-
 HTBRTR="10.10.14.1"
 HTBNIC="tun0"
 VPNSLEEP=1
@@ -96,6 +91,11 @@ BACK="black"
 XFCE4OPTS="--hide-menubar --hide-toolbar --hide-scrollbar"
 
 # -- No editing beyond this point
+
+OVPN="${1:-$HOME/openvpn/hackthebox.ovpn}"
+BOXNAME="${2}"
+IP="${3}"
+PINGAMOUNT="${4:-10}"
 
 ISCONNECTED=0
 ROUTE=""
@@ -204,11 +204,15 @@ start_openvpn() {
 		# Already running. No need to start again
 		return 1
 	fi
-	# Check name resolving if the "remote " peer in the OVPN file.
+	# Check name resolving to work for the "remote " peer in the OVPN file.
 	REMOTEPEER=$(grep '^remote ' "$OVPN" | awk '{print $2}')
-	host -W 1 "$REMOTEPEER" &>/dev/null
-	if [ "$?" -ne 0 ]; then
-		warn "$REMOTEPEER from $OVPN does not resolve. Expect connectivity issues"
+	if [ "x${REMOTEPEER}x" != "xx" ]; then
+		host -W 1 "$REMOTEPEER" &>/dev/null
+		if [ "$?" -ne 0 ]; then
+			warn "$REMOTEPEER from $OVPN does not resolve. Expect connectivity issues"
+		fi
+	else
+		warn "Remote peer not found in $OVPN. Expect connectivity issues"
 	fi
 	# Check if there's an X11-alike $DISPLAY available.
 	if [ "x${DISPLAY}x" = "xx" -o "x$(which $XTERM 2>/dev/null)x" = "xx" ]; then
