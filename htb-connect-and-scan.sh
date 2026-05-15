@@ -470,7 +470,7 @@ note "${YELLOW}$IP${EOC} is now listed as: ${YELLOW}$ALLNAMES${EOC}"
 
 # HTTP(S) Virtual host scanning
 # Use correct domainname.htb (Actually should iterate through all names as there might be a vhost on a subdomain.)
-# Assume the shortest name - without an extra . - is the domainname. (Yes, assumption is the mother of all f...ups)
+# Assume the shortest name -- without an extra . -- is the domainname. (Yes, assumption is the mother of all f...ups)
 # grep pingpong /etc/hosts | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | sort -ru | grep '^[^\.]*\.htb$' | sort | head -n 1
 DOMAINNAME=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | sort -ru | grep '^[^\.]*\.htb$' | sort | head -n 1)
 if [ -r "${VHOSTWL}" ]; then
@@ -480,6 +480,10 @@ if [ -r "${VHOSTWL}" ]; then
 	for port in $PORTS
 	do
 		HTTPS_VHOSTS="${VHOSTFILE}-https-${port}.log"
+		if [ -r "$HTTPS_VHOSTS" ]; then
+			note "$HTTPS_VHOSTS already exists. Skipping"
+			continue
+		fi
 		note "Scanning for HTTPS virtual hosts on port $port. This may take a while.."
 		gobuster vhost -w "$VHOSTWL" --domain "$DOMAINNAME" -u "https://${IP}:${port}" -k --ad -q --np --ne --nc --rua -o "$HTTPS_VHOSTS" &>/dev/null
 	done
@@ -488,6 +492,10 @@ if [ -r "${VHOSTWL}" ]; then
 	for port in $PORTS
 	do
 		HTTP_VHOSTS="${VHOSTFILE}-http-${port}.log"
+		if [ -r "$HTTP_VHOSTS" ]; then
+			note "$HTTP_VHOSTS already exists. Skipping"
+			continue
+		fi
 		note "Scanning for HTTP virtual hosts on port $port. This may take a while.."
 		gobuster vhost -w "$VHOSTWL" --domain "$DOMAINNAME" -u "http://${IP}:${port}" --ad -q --np --ne --nc -k --rua -o "$HTTP_VHOSTS" &>/dev/null
 	done
@@ -496,7 +504,7 @@ if [ -r "${VHOSTWL}" ]; then
 	# Get all existing entries from $HOSTS
 	THESEHOSTS=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | sort -ru | xargs echo)
 	# Rewrite the host entry for $IP with all names
-	ALLNAMES=$(echo "$NEWNAMES $THESEHOSTS" | sed 's/ /\n/g' | sort -ru | xargs echo)
+	ALLNAMES=$(echo "$NEWNAMES $THESEHOSTS" | sed 's/ /\n/g' | sort -u | xargs echo)
 	sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
 	note "${YELLOW}$IP${EOC} is now listed as: ${YELLOW}$ALLNAMES${EOC}"
 else
