@@ -90,6 +90,9 @@ TEXT="green"
 BACK="black"
 XFCE4OPTS="--hide-menubar --hide-toolbar --hide-scrollbar"
 
+# Wordlist for HTTP(S) virtual host scanning
+VHOSTWL="/usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt"
+
 # -- No editing beyond this point
 
 OVPN="${1:-$HOME/openvpn/hackthebox.ovpn}"
@@ -464,5 +467,41 @@ fi
 ALLNAMES=$(echo "$NEWNAMES1 $NEWNAMES2 $NEWNAMES3 $NEWNAMES4 $NEWNAMES5 $THESEHOSTS" | sed 's/ /\n/g' | sort -ru | xargs echo)
 sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
 note "${YELLOW}$IP${EOC} is now listed as: ${YELLOW}$ALLNAMES${EOC}"
+
+# HTTP(S) Virtual host scanning
+# Use correct domainname.htb (Actually should iterate through all names as there might be a vhost on a subdomain.)
+# Assume the shortest name - without an extra . - is the domainname. (Yes, assumption is the mother of all f...ups)
+# grep pingpong /etc/hosts | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | sort -ru | grep '^[^\.]*\.htb$' | sort | head -n 1
+DOMAINNAME=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | sort -ru | grep '^[^\.]*\.htb$' | sort | head -n 1)
+if [ -r "${VHOSTWL}" ]; then
+	VHOSTFILE="${HTBDIR}/gobuster-vhost"
+	# HTTPS scanning
+	PORTS=$(grep '^[0-8].*open[[:space:]]*ssl/http' "$NMAPFILE" | sed 's:^\([0-8]*\)/.*$:\1:' | xargs echo)
+	for port in $PORTS
+	do
+		HTTPS_VHOSTS="${VHOSTFILE}-https-${port}.log"
+		note "Scanning for HTTPS virtual hosts on port $port. This may take a while.."
+		gobuster vhost -w "$VHOSTWL" --domain "$DOMAINNAME" -u "https://${IP}:${port}" -k --ad -q --np --ne --nc --rua -o "$HTTPS_VHOSTS" &>/dev/null
+	done
+	# HTTP scanning
+	PORTS=$(grep '^[0-8].*open[[:space:]]*http' "$NMAPFILE" | sed 's:^\([0-8]*\)/.*$:\1:' | xargs echo)
+	for port in $PORTS
+	do
+		HTTP_VHOSTS="${VHOSTFILE}-http-${port}.log"
+		note "Scanning for HTTP virtual hosts on port $port. This may take a while.."
+		gobuster vhost -w "$VHOSTWL" --domain "$DOMAINNAME" -u "http://${IP}:${port}" --ad -q --np --ne --nc -k --rua -o "$HTTP_VHOSTS" &>/dev/null
+	done
+	# Harvest all 'Status: 200' from ${VHOSTFILE}*
+	NEWNAMES=$(cat "${VHOSTFILE}"*| grep 'Status: 200' | awk '{print $1}' | sort -ru | xargs echo)
+	# Get all existing entries from $HOSTS
+	THESEHOSTS=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | sort -ru | xargs echo)
+	# Rewrite the host entry for $IP with all names
+	ALLNAMES=$(echo "$NEWNAMES $THESEHOSTS" | sed 's/ /\n/g' | sort -ru | xargs echo)
+	sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
+	note "${YELLOW}$IP${EOC} is now listed as: ${YELLOW}$ALLNAMES${EOC}"
+else
+	warn "Skipping HTTP(s) virtual host scanning as $VHOSTWL is missing or not readable."
+fi
+
 
 
