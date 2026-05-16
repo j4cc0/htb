@@ -485,7 +485,7 @@ DOMAINNAME=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' |
 if [ -r "${VHOSTWL}" ]; then
 	VHOSTFILE="${HTBDIR}/gobuster-vhost"
 	# HTTPS scanning
-	PORTS=$(grep '^[0-8].*open[[:space:]]*ssl/http' "$NMAPFILE" | sed 's:^\([0-8]*\)/.*$:\1:' | xargs echo)
+	PORTS=$(grep '^[0-8].*open[[:space:]]*ssl/http' "$NMAPFILE" | sed 's:^\([0-9]*\)/.*$:\1:' | xargs echo)
 	for port in $PORTS
 	do
 		HTTPS_VHOSTS="${VHOSTFILE}-https-${port}.log"
@@ -497,7 +497,7 @@ if [ -r "${VHOSTWL}" ]; then
 		gobuster vhost -w "$VHOSTWL" --domain "$DOMAINNAME" -u "https://${IP}:${port}" -k --ad -q --np --ne --nc --rua -o "$HTTPS_VHOSTS" &>/dev/null
 	done
 	# HTTP scanning
-	PORTS=$(grep '^[0-8].*open[[:space:]]*http' "$NMAPFILE" | sed 's:^\([0-8]*\)/.*$:\1:' | xargs echo)
+	PORTS=$(grep '^[0-8].*open[[:space:]]*http' "$NMAPFILE" | sed 's:^\([0-9]*\)/.*$:\1:' | xargs echo)
 	for port in $PORTS
 	do
 		HTTP_VHOSTS="${VHOSTFILE}-http-${port}.log"
