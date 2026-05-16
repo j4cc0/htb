@@ -500,7 +500,7 @@ if [ -r "${VHOSTWL}" ]; then
 		gobuster vhost -w "$VHOSTWL" --domain "$DOMAINNAME" -u "http://${IP}:${port}" --ad -q --np --ne --nc -k --rua -o "$HTTP_VHOSTS" &>/dev/null
 	done
 	# Harvest all 'Status: 200' from ${VHOSTFILE}*
-	NEWNAMES=$(cat "${VHOSTFILE}"*| grep 'Status: 200' | awk '{print $1}' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
+	NEWNAMES=$(cat "${VHOSTFILE}"* | grep 'Status: 200' | awk '{print $1}' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 	# Get all existing entries from $HOSTS
 	THESEHOSTS=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 	# Rewrite the host entry for $IP with all names
@@ -511,5 +511,7 @@ else
 	warn "Skipping HTTP(s) virtual host scanning as $VHOSTWL is missing or not readable."
 fi
 
-
+# As a wordlist-search might miss "exotic" virtual hosts / subdomains, this might be a strategy:
+# wget --mirror -np http://cobblestone.htb/
+# find . -type f -exec strings {} \; | grep -i 'htb' | sed 's/^.*[\/>]\([A-Za-z0-9\-]*\.[A-Za-z0-9\-]*\.htb\).*$/\1/'
 
