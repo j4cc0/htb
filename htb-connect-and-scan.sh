@@ -332,6 +332,15 @@ if [ "$1" = "-h" -o "$1" = "--help" ]; then
 	exit 0
 fi
 
+# Load configuration file if available
+
+CONF="${SCRIPT%.*}.conf"
+if [ -r "$CONF" ]; then
+	note "Using default values from $CONF"
+	source "$CONF" || \
+		die "Something went wrong while including $CONF"
+fi
+
 # -- Sanity checking
 
 if [ $# -lt 3 ]; then
@@ -471,8 +480,8 @@ note "${YELLOW}$IP${EOC} is now listed as: ${YELLOW}$ALLNAMES${EOC}"
 # HTTP(S) Virtual host scanning
 # Use correct domainname.htb (Actually should iterate through all names as there might be a vhost on a subdomain.)
 # Assume the shortest name -- without an extra . -- is the domainname. (Yes, assumption is the mother of all f...ups)
-# grep pingpong /etc/hosts | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | sort -ru | grep '^[^\.]*\.htb$' | sort | head -n 1
-DOMAINNAME=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | sort -ru | grep '^[^\.]*\.htb$' | sort | head -n 1)
+# grep pingpong /etc/hosts | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | grep '^[^\.]*\.htb$' | sort -u | head -n 1
+DOMAINNAME=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | grep '^[^\.]*\.htb$' | sort -u | head -n 1)
 if [ -r "${VHOSTWL}" ]; then
 	VHOSTFILE="${HTBDIR}/gobuster-vhost"
 	# HTTPS scanning
