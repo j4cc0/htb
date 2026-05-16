@@ -394,7 +394,7 @@ note "Connected!"
 
 # Add or modify host entry in /etc/hosts
 
-grep -w "$BOXNAME" "$HOSTS" &>/dev/null
+grep -iw "$BOXNAME" "$HOSTS" &>/dev/null
 if [ "$?" -eq 0 ]; then
 	# The box is already in /etc/hosts: Modify the entry to match the current IP-address
 	note "Modifying $HOSTS to match $BOXNAME to $IP"
@@ -426,13 +426,13 @@ fi
 # Correct /etc/hosts if the name of the box didn't match from the nmap scan, but keep the (incorrect) BOXNAME in there, so this script can be re-run and things will remain consistent.
 
 # Filter out unique names related to BOXNAME
-THESEHOSTS=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | sort -ru | xargs echo)
+THESEHOSTS=$(grep -i "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 
 # Method 1:
-NEWNAMES1=$(grep -i 'DNS:' "$NMAPFILE" | sed 's/,/\n/g;s/\*\.//g;s/DNS:/\n/g' | grep -v : | grep htb | sort -ru | xargs echo)
+NEWNAMES1=$(grep -i 'DNS:' "$NMAPFILE" | sed 's/,/\n/g;s/\*\.//g;s/DNS:/\n/g' | grep -v : | grep -i htb | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 if [ "x${NEWNAMES1}x" != "xx" ]; then
 	note "Found the following names in a certificate alternative names section: $NEWNAMES1"
-	HASWILDCARD=$(grep -i 'DNS:' "$NMAPFILE" | sed 's/,/\n/g;s/DNS:/\n/g' | grep -v : | grep htb | sort -ru | grep '\*')
+	HASWILDCARD=$(grep -i 'DNS:' "$NMAPFILE" | sed 's/,/\n/g;s/DNS:/\n/g' | grep -v : | grep -i htb | tr '[A-Z]' '[a-z]' | sort -ru | grep '\*')
 	if [ "x${HASWILDCARD}x" != "xx" ]; then
 		important "A wildcard was found in the server certificate, this is a written invitation to do some vhost-scanning"
 		# Perhaps try something like:
@@ -441,30 +441,30 @@ if [ "x${NEWNAMES1}x" != "xx" ]; then
 fi
 
 # Method 2:
-NEWNAMES2=$(grep Domain: "$NMAPFILE" | sed 's/^.*Domain: \(.*\), .*$/\1/' | sort -ru | xargs echo)
+NEWNAMES2=$(grep Domain: "$NMAPFILE" | sed 's/^.*Domain: \(.*\), .*$/\1/' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 if [ "x${NEWNAMES2}x" != "xx" ]; then
 	note "Found the following names in Active Directory LDAP: $NEWNAMES2"
 fi
 
 # Method 3:
-NEWNAMES3=$(grep -i 'Subject: commonName=' "$NMAPFILE" | sed 's/^.*commonName=\(.*\)$/\1/' | sort -ru | xargs echo)
+NEWNAMES3=$(grep -i 'Subject: commonName=' "$NMAPFILE" | sed 's/^.*commonName=\(.*\)$/\1/' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 if [ "x${NEWNAMES3}x" != "xx" ]; then
 	note "Found the following names in a certificate subject: $NEWNAMES3"
 fi
 
 # Method 4:
-NEWNAMES4=$(grep 'follow redirect' "$NMAPFILE" | sed 's@^.*://\(.*.htb\).*$@\1@' | sort -ru | xargs echo)
+NEWNAMES4=$(grep 'follow redirect' "$NMAPFILE" | sed 's@^.*://\(.*.htb\).*$@\1@' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 if [ "x${NEWNAMES4}x" != "xx" ]; then
 	note "Found the following name in a http redirect: $NEWNAMES4"
 fi
 
 # Method 5:
-NEWNAMES5=$(grep "DNS_Computer_Name:" "$NMAPFILE" | awk '{print $NF}')
+NEWNAMES5=$(grep "DNS_Computer_Name:" "$NMAPFILE" | awk '{print $NF}' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 if [ "x${NEWNAMES5}x" != "xx" ]; then
 	note "Found the following name in rdp-ntlm-info: $NEWNAMES5"
 fi
 
-ALLNAMES=$(echo "$NEWNAMES1 $NEWNAMES2 $NEWNAMES3 $NEWNAMES4 $NEWNAMES5 $THESEHOSTS" | sed 's/ /\n/g' | sort -ru | xargs echo)
+ALLNAMES=$(echo "$NEWNAMES1 $NEWNAMES2 $NEWNAMES3 $NEWNAMES4 $NEWNAMES5 $THESEHOSTS" | tr '[A-Z]' '[a-z]' | sed 's/ /\n/g' | sort -ru | xargs echo)
 sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
 note "${YELLOW}$IP${EOC} is now listed as: ${YELLOW}$ALLNAMES${EOC}"
 
@@ -500,11 +500,11 @@ if [ -r "${VHOSTWL}" ]; then
 		gobuster vhost -w "$VHOSTWL" --domain "$DOMAINNAME" -u "http://${IP}:${port}" --ad -q --np --ne --nc -k --rua -o "$HTTP_VHOSTS" &>/dev/null
 	done
 	# Harvest all 'Status: 200' from ${VHOSTFILE}*
-	NEWNAMES=$(cat "${VHOSTFILE}"*| grep 'Status: 200' | awk '{print $1}' | sort -ru | xargs echo)
+	NEWNAMES=$(cat "${VHOSTFILE}"*| grep 'Status: 200' | awk '{print $1}' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 	# Get all existing entries from $HOSTS
-	THESEHOSTS=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | sort -ru | xargs echo)
+	THESEHOSTS=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 	# Rewrite the host entry for $IP with all names
-	ALLNAMES=$(echo "$NEWNAMES $THESEHOSTS" | sed 's/ /\n/g' | sort -u | xargs echo)
+	ALLNAMES=$(echo "$NEWNAMES $THESEHOSTS" | tr '[A-Z]' '[a-z]' | sed 's/ /\n/g' | sort -u | xargs echo)
 	sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
 	note "${YELLOW}$IP${EOC} is now listed as: ${YELLOW}$ALLNAMES${EOC}"
 else
