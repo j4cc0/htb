@@ -514,7 +514,7 @@ if [ -r "${VHOSTWL}" ]; then
 	# Get all existing entries from $HOSTS
 	THESEHOSTS=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 	# Rewrite the host entry for $IP with all names
-	ALLNAMES=$(echo "$NEWNAMES $THESEHOSTS" | tr '[A-Z]' '[a-z]' | sed 's/ /\n/g' | sort -u | xargs echo)
+	ALLNAMES=$(echo "$NEWNAMES $THESEHOSTS" | tr '[A-Z]' '[a-z]' | sed 's/ /\n/g' | sort -ru | xargs echo)
 	# Update the $HOSTS file
 	sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
 	note "${YELLOW}$IP${EOC} is now listed as: ${YELLOW}$ALLNAMES${EOC}"
