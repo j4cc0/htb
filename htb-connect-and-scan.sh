@@ -474,6 +474,7 @@ if [ "x${NEWNAMES5}x" != "xx" ]; then
 fi
 
 ALLNAMES=$(echo "$NEWNAMES1 $NEWNAMES2 $NEWNAMES3 $NEWNAMES4 $NEWNAMES5 $THESEHOSTS" | tr '[A-Z]' '[a-z]' | sed 's/ /\n/g' | sort -ru | xargs echo)
+# Update the $HOSTS file
 sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
 note "${YELLOW}$IP${EOC} is now listed as: ${YELLOW}$ALLNAMES${EOC}"
 
@@ -508,12 +509,13 @@ if [ -r "${VHOSTWL}" ]; then
 		note "Scanning for HTTP virtual hosts on port $port. This may take a while.."
 		gobuster vhost -w "$VHOSTWL" --domain "$DOMAINNAME" -u "http://${IP}:${port}" --ad -q --np --ne --nc -k --rua -o "$HTTP_VHOSTS" &>/dev/null
 	done
-	# Harvest all 'Status: 200' from ${VHOSTFILE}*
-	NEWNAMES=$(cat "${VHOSTFILE}"* | grep 'Status: 200' | awk '{print $1}' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
+	# Harvest all 'Status: 200' or 'Status: 401' from ${VHOSTFILE}*
+	NEWNAMES=$(cat "${VHOSTFILE}"* | grep -E 'Status: 200|Status: 401' | awk '{print $1}' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 	# Get all existing entries from $HOSTS
 	THESEHOSTS=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 	# Rewrite the host entry for $IP with all names
 	ALLNAMES=$(echo "$NEWNAMES $THESEHOSTS" | tr '[A-Z]' '[a-z]' | sed 's/ /\n/g' | sort -u | xargs echo)
+	# Update the $HOSTS file
 	sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
 	note "${YELLOW}$IP${EOC} is now listed as: ${YELLOW}$ALLNAMES${EOC}"
 else
