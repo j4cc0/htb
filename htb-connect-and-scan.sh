@@ -456,7 +456,7 @@ if [ "x${NEWNAMES2}x" != "xx" ]; then
 fi
 
 # Method 3:
-NEWNAMES3=$(grep -i 'Subject: commonName=' "$NMAPFILE" | sed 's/^.*commonName=\(.*\)$/\1/' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
+NEWNAMES3=$(grep -i 'Subject: commonName=' "$NMAPFILE" | sed 's@/.*@@;s@^.*commonName=\(.*\)$@\1@' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 if [ "x${NEWNAMES3}x" != "xx" ]; then
 	note "Found the following names in a certificate subject: $NEWNAMES3"
 fi
