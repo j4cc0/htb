@@ -399,7 +399,7 @@ while [ "$ISCONNECTED" -eq 0 ]; do
 	fi
 done
 echo ""
-note "Connected!"
+note "${GREEN}=====>[ ${YELLOW}Connected! ${GREEN}]<====="
 
 # Add or modify host entry in /etc/hosts
 
@@ -462,7 +462,7 @@ if [ "x${NEWNAMES3}x" != "xx" ]; then
 fi
 
 # Method 4:
-NEWNAMES4=$(grep 'follow redirect' "$NMAPFILE" | sed 's@^.*://\(.*.htb\).*$@\1@' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
+NEWNAMES4=$(grep 'follow redirect' "$NMAPFILE" | grep -iv 'did not follow redirect to' | sed 's@^.*://\(.*.htb\).*$@\1@' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 if [ "x${NEWNAMES4}x" != "xx" ]; then
 	note "Found the following name in a http redirect: $NEWNAMES4"
 fi
