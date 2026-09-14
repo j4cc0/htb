@@ -487,6 +487,9 @@ if [ -r "${VHOSTWL}" ]; then
 	VHOSTFILE="${HTBDIR}/gobuster-vhost"
 	# HTTPS scanning
 	PORTS=$(grep '^[0-9].*open[[:space:]]*ssl/http' "$NMAPFILE" | sed 's:^\([0-9]*\)/.*$:\1:' | xargs echo)
+	if [ "x${PORTS}x" = "xx" ]; then
+		note "No ports related to ssl/http in $NMAPFILE. Skipping"
+	fi
 	for port in $PORTS
 	do
 		HTTPS_VHOSTS="${VHOSTFILE}-https-${port}.log"
@@ -499,6 +502,9 @@ if [ -r "${VHOSTWL}" ]; then
 	done
 	# HTTP scanning
 	PORTS=$(grep '^[0-9].*open[[:space:]]*http' "$NMAPFILE" | sed 's:^\([0-9]*\)/.*$:\1:' | xargs echo)
+	if [ "x${PORTS}x" = "xx" ]; then
+		note "No ports related to http in $NMAPFILE. Skipping"
+	fi
 	for port in $PORTS
 	do
 		HTTP_VHOSTS="${VHOSTFILE}-http-${port}.log"
@@ -510,7 +516,13 @@ if [ -r "${VHOSTWL}" ]; then
 		gobuster vhost -w "$VHOSTWL" --domain "$DOMAINNAME" -u "http://${IP}:${port}" --ad -q --np --ne --nc -k --rua -o "$HTTP_VHOSTS" &>/dev/null
 	done
 	# Harvest all 'Status: 200' or 'Status: 401' from ${VHOSTFILE}*
-	NEWNAMES=$(cat "${VHOSTFILE}"* | grep -E 'Status: 200|Status: 401' | awk '{print $1}' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
+	NEWNAMES=""
+	NRVHOSTS=$(ls -1 "${VHOSTFILE}"* 2>/dev/null | wc -l)
+	if [ "$NRVHOSTS" -ge 1 ]; then
+		NEWNAMES=$(cat "${VHOSTFILE}"* | grep -E 'Status: 200|Status: 401' | awk '{print $1}' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
+	else
+		note "No virtual hosts were found"
+	fi
 	# Get all existing entries from $HOSTS
 	THESEHOSTS=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 	# Rewrite the host entry for $IP with all names
