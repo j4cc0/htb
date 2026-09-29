@@ -334,7 +334,7 @@ fi
 
 # Load configuration file if available
 
-CONF="${SCRIPT%.*}.conf"
+CONF="$(basename ${SCRIPT%.*}.conf)"
 if [ -r "$CONF" ]; then
 	note "Using default values from $CONF"
 	source "$CONF" || \
@@ -427,8 +427,8 @@ touch "$HTBDIR/$IP" || \
 	die "Failed to write in $HTBDIR"
 
 NMAPFILE="$HTBDIR/full.nmap"
-if [ ! -s "$NMAPFILE" ]; then
-	# Nmap file does not exist or is 0 bytes.
+if [ "x$(grep -v '^#' "$NMAPFILE")x" = "xx" ]; then
+	# Nmap file does not exist or has no useful content.
 	nmap -A -p- -n -vv -oA "$HTBDIR/full" "$IP"
 fi
 
