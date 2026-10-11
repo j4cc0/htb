@@ -427,8 +427,13 @@ touch "$HTBDIR/$IP" || \
 	die "Failed to write in $HTBDIR"
 
 NMAPFILE="$HTBDIR/full.nmap"
-if [ "x$(grep -v '^#' "$NMAPFILE")x" = "xx" ]; then
-	# Nmap file does not exist or has no useful content.
+if [ -r "$NMAPFILE" ]; then
+	# Nmap file does exist but has no useful content.
+	if [ "x$(grep -v '^#' $NMAPFILE)x" = "xx" ]; then
+		nmap -A -p- -n -vv -oA "$HTBDIR/full" "$IP"
+	fi
+else
+	# Nmap file does not exist
 	nmap -A -p- -n -vv -oA "$HTBDIR/full" "$IP"
 fi
 
@@ -437,43 +442,49 @@ fi
 # Filter out unique names related to BOXNAME
 THESEHOSTS=$(grep -i "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 
+NEWNAME=()
+
 # Method 1:
-NEWNAMES1=$(grep -i 'DNS:' "$NMAPFILE" | sed 's/,/\n/g;s/\*\.//g;s/DNS:/\n/g' | grep -v : | grep -i htb | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
-if [ "x${NEWNAMES1}x" != "xx" ]; then
-	note "Found the following names in a certificate alternative names section: $NEWNAMES1"
-	HASWILDCARD=$(grep -i 'DNS:' "$NMAPFILE" | sed 's/,/\n/g;s/DNS:/\n/g' | grep -v : | grep -i htb | tr '[A-Z]' '[a-z]' | sort -ru | grep '\*')
-	if [ "x${HASWILDCARD}x" != "xx" ]; then
-		important "A wildcard was found in the server certificate, this is a written invitation to do some vhost-scanning"
-		# Perhaps try something like:
-		#     gobuster vhost -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt --domain "${BOXNAME}" -u https://"${IP}" -k --ad 
-	fi
+NEWNAME[0]=$(grep -i 'DNS:' "$NMAPFILE" | sed 's/,/\n/g;s/\*\.//g;s/DNS:/\n/g' | grep -v : | grep -i htb | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
+if [ "x${NEWNAME[0]}x" != "xx" ]; then
+	note "Found the following names in a certificate alternative names section: ${NEWNAME[0]}"
+	#HASWILDCARD=$(grep -i 'DNS:' "$NMAPFILE" | sed 's/,/\n/g;s/DNS:/\n/g' | grep -v : | grep -i htb | tr '[A-Z]' '[a-z]' | sort -ru | grep '\*')
+	#if [ "x${HASWILDCARD}x" != "xx" ]; then
+		#important "A wildcard was found in the server certificate, this is a written invitation to do some vhost-scanning"
+	#fi
 fi
 
 # Method 2:
-NEWNAMES2=$(grep Domain: "$NMAPFILE" | sed 's/^.*Domain: \(.*\), .*$/\1/' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
-if [ "x${NEWNAMES2}x" != "xx" ]; then
-	note "Found the following names in Active Directory LDAP: $NEWNAMES2"
+NEWNAME[1]=$(grep Domain: "$NMAPFILE" | sed 's/^.*Domain: \(.*\), .*$/\1/' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
+if [ "x${NEWNAME[1]}x" != "xx" ]; then
+	note "Found the following names in Active Directory LDAP: ${NEWNAME[1]}"
 fi
 
 # Method 3:
-NEWNAMES3=$(grep -i 'Subject: commonName=' "$NMAPFILE" | sed 's@/.*@@;s@^.*commonName=\(.*\)$@\1@' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
-if [ "x${NEWNAMES3}x" != "xx" ]; then
-	note "Found the following names in a certificate subject: $NEWNAMES3"
+NEWNAME[2]=$(grep -i 'Subject: commonName=' "$NMAPFILE" | sed 's@/.*@@;s@^.*commonName=\(.*\)$@\1@' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
+if [ "x${NEWNAME[2]}x" != "xx" ]; then
+	note "Found the following names in a certificate subject: ${NEWNAME[2]}"
 fi
 
 # Method 4:
-NEWNAMES4=$(grep 'follow redirect' "$NMAPFILE" | grep -iv 'did not follow redirect to' | sed 's@^.*://\(.*.htb\).*$@\1@' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
-if [ "x${NEWNAMES4}x" != "xx" ]; then
-	note "Found the following name in a http redirect: $NEWNAMES4"
+NEWNAME[3]=$(grep 'follow redirect' "$NMAPFILE" | grep -iv 'did not follow redirect to' | sed 's@^.*://\(.*.htb\).*$@\1@' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
+if [ "x${NEWNAME[3]}x" != "xx" ]; then
+	note "Found the following name in a http redirect: ${NEWNAME[3]}"
 fi
 
 # Method 5:
-NEWNAMES5=$(grep "DNS_Computer_Name:" "$NMAPFILE" | awk '{print $NF}' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
-if [ "x${NEWNAMES5}x" != "xx" ]; then
-	note "Found the following name in rdp-ntlm-info: $NEWNAMES5"
+NEWNAME[4]=$(grep "DNS_Computer_Name:" "$NMAPFILE" | awk '{print $NF}' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
+if [ "x${NEWNAME[4]}x" != "xx" ]; then
+	note "Found the following name in rdp-ntlm-info: ${NEWNAME[4]}"
 fi
 
-ALLNAMES=$(echo "$NEWNAMES1 $NEWNAMES2 $NEWNAMES3 $NEWNAMES4 $NEWNAMES5 $THESEHOSTS" | tr '[A-Z]' '[a-z]' | sed 's/ /\n/g' | sort -ru | xargs echo)
+# Method 6:
+NEWNAME[5]=$(grep "not follow redirect to" "$NMAPFILE" | awk '{print $NF}' | sed 's/^.*:\/\/\(.*\)\/.*$/\1/')
+if [ "x${NEWNAME[5]}x" != "x${BOXNAME}x" ]; then
+	note "Found the following name in a not followed redirect: ${NEWNAME[5]}"
+fi
+
+ALLNAMES=$(echo "${NEWNAME[@]} $THESEHOSTS" | tr '[A-Z]' '[a-z]' | sed 's/ /\n/g' | sort -ru | xargs echo)
 # Update the $HOSTS file
 sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
 note "${YELLOW}$IP${EOC} is now listed as: ${YELLOW}$ALLNAMES${EOC}"
@@ -488,7 +499,7 @@ if [ -r "${VHOSTWL}" ]; then
 	# HTTPS scanning
 	PORTS=$(grep '^[0-9].*open[[:space:]]*ssl/http' "$NMAPFILE" | sed 's:^\([0-9]*\)/.*$:\1:' | xargs echo)
 	if [ "x${PORTS}x" = "xx" ]; then
-		note "No ports related to ssl/http in $NMAPFILE. Skipping"
+		note "No ports related to HTTPS in $NMAPFILE. Skipping"
 	fi
 	for port in $PORTS
 	do
@@ -503,7 +514,7 @@ if [ -r "${VHOSTWL}" ]; then
 	# HTTP scanning
 	PORTS=$(grep '^[0-9].*open[[:space:]]*http' "$NMAPFILE" | sed 's:^\([0-9]*\)/.*$:\1:' | xargs echo)
 	if [ "x${PORTS}x" = "xx" ]; then
-		note "No ports related to http in $NMAPFILE. Skipping"
+		note "No ports related to HTTP in $NMAPFILE. Skipping"
 	fi
 	for port in $PORTS
 	do
@@ -516,17 +527,18 @@ if [ -r "${VHOSTWL}" ]; then
 		gobuster vhost -w "$VHOSTWL" --domain "$DOMAINNAME" -u "http://${IP}:${port}" --ad -q --np --ne --nc -k --rua -o "$HTTP_VHOSTS" &>/dev/null
 	done
 	# Harvest all 'Status: 200' or 'Status: 401' from ${VHOSTFILE}*
-	NEWNAMES=""
+	NEWVNAME=""
 	NRVHOSTS=$(ls -1 "${VHOSTFILE}"* 2>/dev/null | wc -l)
 	if [ "$NRVHOSTS" -ge 1 ]; then
-		NEWNAMES=$(cat "${VHOSTFILE}"* | grep -E 'Status: 200|Status: 401' | awk '{print $1}' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
+		# NOTE: This might include a huge list of false positives
+		NEWVNAME=$(cat "${VHOSTFILE}"* | grep -E 'Status: 200|Status: 401' | awk '{print $1}' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 	else
 		note "No virtual hosts were found"
 	fi
 	# Get all existing entries from $HOSTS
 	THESEHOSTS=$(grep "$BOXNAME" "$HOSTS" | sed 's/^.*[0-9][[:space:]]//;s/ /\n/g' | tr '[A-Z]' '[a-z]' | sort -ru | xargs echo)
 	# Rewrite the host entry for $IP with all names
-	ALLNAMES=$(echo "$NEWNAMES $THESEHOSTS" | tr '[A-Z]' '[a-z]' | sed 's/ /\n/g' | sort -ru | xargs echo)
+	ALLNAMES=$(echo "$NEWVNAME $THESEHOSTS" | tr '[A-Z]' '[a-z]' | sed 's/ /\n/g' | sort -ru | xargs echo)
 	# Update the $HOSTS file
 	sed -i "/$BOXNAME/s/^.*[0-9]*[[:space:]]$BOXNAME.*$/$IP\t$ALLNAMES\n/" "$HOSTS"
 	note "${YELLOW}$IP${EOC} is now listed as: ${YELLOW}$ALLNAMES${EOC}"
